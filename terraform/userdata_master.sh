@@ -17,7 +17,8 @@ yum install -y kubelet kubeadm kubectl --disableexcludes=kubernetes
 kubeadm init --pod-network-cidr=10.244.0.0/16
 
 mkdir -p /root/.kube
-cp /etc/kubernetes/admin.conf /root/.kube/config
+cp -i /etc/kubernetes/admin.conf /root/.kube/config
+chown $(id -u):$(id -g) /root/.kube/config
 
 export KUBECONFIG=/etc/kubernetes/admin.conf
 kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml

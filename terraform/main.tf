@@ -47,11 +47,18 @@ resource "aws_instance" "master" {
 
 resource "null_resource" "upload_kubeconfig" {
   provisioner "local-exec" {
-    command = "aws s3 cp /root/.kube/config s3://${var.s3_bucket_name}/kubeconfig"
+    command = <<EOT
+    if [ -f /root/.kube/config ]; then
+      aws s3 cp /root/.kube/config s3://${var.s3_bucket_name}/kubeconfig
+    else
+      echo "Kubeconfig file does not exist."
+    fi
+    EOT
   }
 
   depends_on = [aws_instance.master]
 }
+
 
 output "master_public_ip" {
   value = aws_instance.master.public_ip

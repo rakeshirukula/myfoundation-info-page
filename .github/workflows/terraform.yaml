@@ -4,9 +4,20 @@ on:
   push:
     branches:
       - master  # Run workflow on pushes to the main branch
+  workflow_dispatch:
+    inputs:
+     DESTROY_INFRA:
+      description: " set to 1 to destroy"
+      required : true
+      default : "0"
+     DEPLOY_INFRA:
+      description: " set to 1 to deploy"
+      required : true
+      default : "0
 
 jobs:
   terraform:
+    if : ${{ github.events.input.DEPLOY_INFRA == '1' && !failure() }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -33,6 +44,18 @@ jobs:
 
       - name: Terraform Apply
         run: terraform apply -auto-approve
+        working-directory: ./terraform
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          GITHUB_ACTIONS_STEP_DEBUG: true
+          
+  terraformdestroy:
+      if : ${{ github.events.input.DESTROY_INFRA == '1' && !failure() }}
+      runs-on: ubuntu-latest
+      steps:
+      - name: Terraform destroy
+        run: terraform destroy -auto-approve
         working-directory: ./terraform
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}

@@ -1,76 +1,87 @@
-name: Terraform Apply and Conditional Destroy
+name: Deploy Kubernetes Cluster
 
 on:
-  push:
-    branches:
-      - master  # Run workflow on pushes to the main branch
   workflow_dispatch:
     inputs:
-      DESTROY_INFRA:
-        description: "Set to 1 to destroy"
+      DEPLOY:
+        description: 'Set to 1 to deploy, 0 to skip'
         required: true
-        default: "0"
-      DEPLOY_INFRA:
-        description: "Set to 1 to deploy"
+        default: '1'
+        type: string
+      DESTROY:
+        description: 'Set to 1 to destroy resources, 0 to skip'
         required: true
-        default: "0"
+        default: '0'
+        type: string
 
 jobs:
   terraform:
-    if: ${{ github.event.inputs.DEPLOY_INFRA == '1' }}
     runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.DEPLOY == '1' }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v1
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.0
 
       - name: Terraform Init
+        working-directory: ./terraform
         run: terraform init
-        working-directory: ./terraform
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-
-
-      - name: Terraform Plan
-        run: terraform plan
-        working-directory: ./terraform
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-
 
       - name: Terraform Apply
-        run: terraform apply -auto-approve
         working-directory: ./terraform
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: terraform apply -auto-approve
 
-  terraformdestroy:
-    if: ${{ github.event.inputs.DESTROY_INFRA == '1' }}
+  upload_kubeconfig:
     runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.DEPLOY == '1' }}
+    needs: terraform
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
+
+      - name: Install AWS CLI
+        run: |
+          curl "https://d1vvhvl2y92vvt.cloudfront.net/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip awscliv2.zip
+          sudo ./aws/install
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_region: ${{ secrets.AWS_REGION }}
+
+      - name: Fetch kubeconfig from EC2 instance
+        run: |
+          # Wait for EC2 instance to be up and running (adjust as necessary)
+          sleep 60  # Adjust the wait time to ensure the EC2 instance is initialized
+
+          # Fetch the kubeconfig file from the EC2 instance
+          scp -i ${{ secrets.EC2_SSH_KEY }} -o StrictHostKeyChecking=no ec2-user@${{ needs.terraform.outputs.master_public_ip }}:/root/.kube/config kubeconfig
+
+      - name: Upload kubeconfig to S3
+        run: |
+          # Upload the kubeconfig file to the S3 bucket with the name kubeconfig
+          aws s3 cp kubeconfig s3://${{ secrets.S3_BUCKET_NAME }}/kubeconfig
+
+  destroy_resources:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.DESTROY == '1' }}
+    needs: terraform
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
       - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v1
-
-      - name: Terraform Init
-        run: terraform init
-        working-directory: ./terraform
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.0
 
       - name: Terraform Destroy
-        run: terraform destroy -auto-approve
         working-directory: ./terraform
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-
+        run: terraform destroy -auto-approve

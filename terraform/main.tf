@@ -8,6 +8,12 @@ variable "region" {
   default     = "us-east-1"
 }
 
+variable "s3_bucket_name" {
+  description = "The AWS region to create the VPC in"
+  type        = string
+  default     = "kubeconfigfile"
+}
+
 resource "aws_vpc" "main" {
   cidr_block = "10.0.0.0/16"
 

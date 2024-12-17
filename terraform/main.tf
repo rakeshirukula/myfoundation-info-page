@@ -20,7 +20,6 @@ resource "aws_vpc" "main" {
 resource "aws_subnet" "main" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = "10.0.1.0/24"
-  availability_zone = "us-east-1a"
 
   tags = {
     Name = "main-subnet"
@@ -28,7 +27,7 @@ resource "aws_subnet" "main" {
 }
 
 resource "aws_instance" "master" {
-  ami           = "ami-0c55b159cbfafe1f0"  # Amazon Linux 2 AMI (replace with your desired AMI)
+  ami           = "ami-01816d07b1128cd2d"  # Amazon Linux 2 AMI (replace with your desired AMI)
   instance_type = "t2.micro"
   subnet_id     = aws_subnet.main.id
 
@@ -40,7 +39,7 @@ resource "aws_instance" "master" {
 }
 
 resource "aws_instance" "agent" {
-  ami           = "ami-0c55b159cbfafe1f0"  # Amazon Linux 2 AMI (replace with your desired AMI)
+  ami           = "ami-01816d07b1128cd2d"  # Amazon Linux 2 AMI (replace with your desired AMI)
   instance_type = "t2.micro"
   subnet_id     = aws_subnet.main.id
 

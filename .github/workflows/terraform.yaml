@@ -6,7 +6,7 @@ on:
       DEPLOY:
         description: 'Set to 1 to deploy, 0 to skip'
         required: true
-        default: '1'
+        default: '0'
         type: string
       DESTROY:
         description: 'Set to 1 to destroy resources, 0 to skip'

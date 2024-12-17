@@ -51,9 +51,11 @@ resource "aws_instance" "agent" {
 }
 
 
+
+
 resource "null_resource" "upload_kubeconfig" {
   provisioner "local-exec" {
-    command = "aws s3 cp /root/.kube/config s3://${aws_s3_bucket.kubeconfig_bucket.id}/kubeconfig"
+    command = "aws s3 cp /root/.kube/config s3://${var.s3_bucket_name}/kubeconfig"
   }
 
   depends_on = [aws_instance.master, aws_instance.agent]

@@ -9,7 +9,7 @@ on:
       DESTROY_INFRA:
         description: "Set to 1 to destroy"
         required: true
-        default: "0"
+        default: "1"
       DEPLOY_INFRA:
         description: "Set to 1 to deploy"
         required: true
